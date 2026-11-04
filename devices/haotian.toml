@@ -187,9 +187,10 @@ server = "https://update.miui.com/updates/miotaV3.php"
 # OS4.0.0.19, whose full update package on the phone maker's own download
 # server holds the recovery partition the recovery is built on top of.
 [stock]
-version = "OS4.0.0.19.XOBCNXM"
-package = "https://bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.aliyuncs.com/OS4.0.0.19.XOBCNXM/haotian-ota_full-OS4.0.0.19.XOBCNXM-user-17.0-2f40c16d06.zip"
-recovery = "657f3bed0afa0be2a9dbc07ed3d511c6acda4f82c2c5c99983b9c86d7d9358b7"
+version = "OS3.0.309.0.WOBCNXM"
+package = "https://bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.aliyuncs.com/OS3.0.309.0.WOBCNXM/haotian-ota_full-OS3.0.309.0.WOBCNXM-user-16.0-f9387d12d7.zip"
+recovery = "675c3755a00c993ad706550d79377e906abe2547f423f29ced2fb3587d170bd8"
+
 # This phone's motor is not the one qcom-hv-haptics drives: it is Cirrus
 # Logic's CS40L26 on i2c 0-0043, whose driver the phone's own init loads as
 # cs40l26-core, cs40l26-i2c and snd-soc-cs40l26. Its probe reads

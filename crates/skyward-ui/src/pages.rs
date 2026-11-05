@@ -18,7 +18,7 @@ use crate::theme::Theme;
 use crate::tr;
 use crate::icons::{self, Icon};
 use crate::widgets::{self, Caption, Detail, Fact, Outline, Row, Spec, Tone, Trail};
-use skyward_info::{DeviceInfo, BUILT_BY, VERSION};
+use skyward_info::{DeviceInfo, VERSION};
 use skyward_install::{Outcome, Reflash, Refusal, Stage};
 use skyward_net::download::Progress;
 use skyward_net::supplicant::Security;
@@ -468,7 +468,7 @@ pub fn mount(cx: &Ctx) -> Frame {
 }
 
 /// Who made the recovery, as the About page names them under its version.
-const AUTHOR: &str = "© 2026 Kirk Lin";
+const AUTHOR: &str = "© 2026 Kirk Lin & 澪洛依";
 
 /// About this device, modelled on the stock「我的设备」: the wordmark, the
 /// version and its author over a moving colour field, and the summary,
@@ -586,7 +586,6 @@ pub fn specs(cx: &Ctx) -> Frame {
     y = widgets::info_card(&mut c, t, f, y + gap, &[
         (l.pick(["Recovery 版本", "Recovery 版本", "Recovery version"]), format!("Skyward {VERSION}")),
         (l.pick(["内核版本", "核心版本", "Kernel version"]), i.kernel.clone()),
-        (l.pick(["构建 by", "構建 by", "Built by"]), BUILT_BY.to_string()),
     ]);
 
     let mut boot = Vec::new();

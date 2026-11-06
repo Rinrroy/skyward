@@ -16,7 +16,11 @@ width = 1440
 height = 3200
 density = 600
 diagonal = 6.73
-corner_radius = 168
+# The radius the system rounds a sliding window's corners to: SurfaceFlinger
+# gives an activity's layers 383.876 and 385.281 as a Settings page slides in.
+# The display's own rounded_corner_radius, 140, is smaller than the glass's
+# corner, and 168 was still visibly short of it.
+corner_radius = 384
 
 [modules]
 sources = ["vendor_boot", "vendor_dlkm", "vendor", "system_dlkm"]

@@ -16,7 +16,11 @@ width = 1440
 height = 3200
 density = 600
 diagonal = 6.73
-corner_radius = 168
+# The radius the system rounds a sliding window's corners to: SurfaceFlinger
+# gives an activity's layers 383.876 and 385.281 as a Settings page slides in.
+# The display's own rounded_corner_radius, 140, is smaller than the glass's
+# corner, and 168 still left the sliding page's corners short of it.
+corner_radius = 384
 
 [modules]
 sources = ["vendor_boot", "vendor_dlkm", "vendor", "system_dlkm"]
@@ -243,6 +247,15 @@ firmware = [
     { name = "cs40l26-a2h.bin", path = "/odm/firmware/cs40l26-a2h.bin" },
 ]
 strength = { lightest = 0.25, strongest = 0.75 }
+
+# The panel's own doze, as the system's always-on display uses it. Tried by
+# hand in the recovery: command set 45 (mi,mdss-dsi-doze-lbm-command) keeps
+# the frame on the glass, dimmed, with the backlight written to 0; set 18
+# (qcom,mdss-dsi-nolp-command) brings the panel back, and the backlight is
+# written again after it.
+[aod]
+enter_cmds = [45]
+leave_cmds = [18]
 
 # The recovery's own logd loads libsysutils and libcap, which the stock
 # recovery leaves out, so it ends as soon as init starts it...

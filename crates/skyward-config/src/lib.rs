@@ -50,6 +50,10 @@ pub struct DeviceConfig {
     /// The vibration motor's click, on phones that have one.
     #[serde(default)]
     pub haptics: Option<Haptics>,
+    /// The panel's own doze, on phones whose display driver offers one: what
+    /// keeps a little on the glass with the backlight out.
+    #[serde(default)]
+    pub aod: Option<Aod>,
     /// The recovery's own logd, on phones whose recovery leaves out
     /// libraries it needs.
     #[serde(default)]
@@ -215,6 +219,65 @@ pub struct Haptics {
     #[serde(default)]
     pub firmware: Vec<Firmware>,
     pub strength: Strength,
+}
+
+/// The panel's own doze: what the display driver is told to keep a little of
+/// the panel alight with the backlight out, as the stock system keeps its
+/// always-on display on these phones. The driver is Xiaomi's `mi_disp`, which
+/// lives inside `msm_drm` — the same module that drives the pages.
+///
+/// A panel is put into its doze by sending it one of its own command sets and
+/// taken out of it by sending others, through the node the driver writes a
+/// set's number to; the panel stays dark to the rest of the system either
+/// way, its backlight at 0. What glows is decided by the frame, not by the
+/// light: an OLED lights the subpixels the framebuffer lights, so the pages
+/// draw black but for the clock.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Aod {
+    /// The display driver's folder for the panel: it holds the node that
+    /// lists the driver's features, and one node per feature.
+    #[serde(default = "default_aod_dir")]
+    pub dir: String,
+    /// The node a command set's number is written to, which has the driver
+    /// send that set to the panel.
+    #[serde(default = "default_aod_node")]
+    pub node: String,
+    /// The driver's features written as the panel goes into its doze, each by
+    /// the number `disp_param` gives it: a feature the driver does not list
+    /// is left alone rather than written blind.
+    #[serde(default)]
+    pub enter: Vec<Feature>,
+    /// The command sets sent as it goes in, by the number the node's own
+    /// listing gives each.
+    #[serde(default)]
+    pub enter_cmds: Vec<u32>,
+    /// The features written as it comes back out.
+    #[serde(default)]
+    pub leave: Vec<Feature>,
+    /// The command sets sent as it comes back out.
+    #[serde(default)]
+    pub leave_cmds: Vec<u32>,
+}
+
+/// One of the display driver's features, as `disp_param` lists it: the number
+/// it gives the feature in brackets after its name, and the value to write.
+/// The driver's own folder carries a node for each feature it lets be
+/// written, named as the listing names it.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Feature {
+    /// The number in brackets after the feature's name: `doze_brightness` is
+    /// `[03]`, `apl_dimming` is `[36]`. The driver counts them in hex.
+    pub id: u32,
+    /// What is written to the feature's node, as text.
+    pub value: String,
+}
+
+fn default_aod_dir() -> String {
+    "/sys/class/mi_display/disp-DSI-0".into()
+}
+
+fn default_aod_node() -> String {
+    "/proc/mi_display/tx_cmd_set_prim".into()
 }
 
 /// How strongly the click plays, each as a share of the most its waveform
@@ -548,6 +611,13 @@ impl DeviceConfig {
             let path = Path::new(folder);
             let plain = path.components().all(|c| matches!(c, std::path::Component::Normal(_)));
             ensure!(plain && !folder.is_empty(), "[backup] data_skipped: {folder} is not a path from the top of {DATA}");
+        }
+        if let Some(aod) = &cfg.aod {
+            for path in [&aod.dir, &aod.node] {
+                ensure!(Path::new(path).is_absolute(), "[aod] {path} is not an absolute path");
+            }
+            ensure!(!aod.enter_cmds.is_empty(), "[aod] enter_cmds names no command set that puts the panel into its doze");
+            ensure!(!aod.leave_cmds.is_empty(), "[aod] leave_cmds names no command set that brings the panel back out");
         }
         if let Some(haptics) = &cfg.haptics {
             // A click is of one kind or the other, and a driver that keeps
@@ -1068,5 +1138,19 @@ mod tests {
         assert!(!sensor.uses(Path::new("/mnt/system")), "its /system/lib64 is the recovery's own");
         assert!(!report.uses(Path::new("/vendor")));
         assert!(listeners.uses(Path::new("/vendor")));
+    }
+
+    #[test]
+    fn a_doze_names_its_command_sets_both_ways() {
+        let cfg = DeviceConfig::parse(include_str!("../../../devices/haotian.toml")).unwrap();
+        let aod = cfg.aod.expect("haotian dozes with the panel's own command sets");
+        assert_eq!((aod.enter_cmds, aod.leave_cmds), (vec![45], vec![18]));
+        assert_eq!(aod.node, "/proc/mi_display/tx_cmd_set_prim");
+        let base = include_str!("../../../devices/ishtar.toml");
+        assert!(DeviceConfig::parse(base).unwrap().aod.is_none(), "a phone that names none blanks the ordinary way");
+        assert!(DeviceConfig::parse(&format!("{base}\n[aod]\nenter_cmds = [45]\n")).is_err(), "no way back out");
+        assert!(DeviceConfig::parse(&format!("{base}\n[aod]\nleave_cmds = [18]\n")).is_err(), "no way in");
+        let relative = format!("{base}\n[aod]\nnode = \"proc/x\"\nenter_cmds = [45]\nleave_cmds = [18]\n");
+        assert!(DeviceConfig::parse(&relative).is_err());
     }
 }

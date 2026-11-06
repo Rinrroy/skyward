@@ -1,3 +1,4 @@
+use crate::aod;
 use crate::backup;
 use crate::decrypt::{self, Decryptor};
 use crate::filework;
@@ -29,6 +30,7 @@ use skyward_net::download::{self, Failure};
 use skyward_net::http::Servers;
 use skyward_net::release::{Installed, Release, Unanswered};
 use skyward_net::wlan::Power as WlanPower;
+use skyward_ui::aod::{Shown, Want};
 use skyward_ui::app::{
     App, Asked, BackupAt, BackupEnd, BackupEntry, BackupRefusal, ClashChoice, Data, DownloadEnd, Effect, EraseStop, FileKind, FileOp,
     FileRow, FileTask, FsAction, FsRow, Have, Held, ItemEnd, ItemState, JobEnd, Keys, MountFailure, Part, PartKind, PartStop, Place,
@@ -1175,6 +1177,10 @@ pub fn run(cfg: &DeviceConfig, font: &Path, mono: &Path, request: bcb::Request, 
     // Whether the panel's frame memory has been blacked out for an off
     // panel; cleared once a real frame is shown again.
     let mut blanked = false;
+    // The panel's own doze, on a phone that names one: a dark panel then
+    // keeps the time on the glass with the backlight at 0.
+    let mut doze = cfg.aod.as_ref().map(aod::Panel::new);
+    let mut faced = String::new();
     // Started for fastboot, the port goes to the phone's own fastbootd. The
     // page says whether it came up and how far a computer has the port;
     // why it did not come up goes to the kernel log and on screen.
@@ -1425,7 +1431,14 @@ pub fn run(cfg: &DeviceConfig, font: &Path, mono: &Path, request: bcb::Request, 
         }
         let panel = app.panel(now);
         let mut shown = false;
+        let dozes = doze.as_ref().is_some_and(aod::Panel::usable);
         if panel.is_some() {
+            // Out of the panel's doze before the page goes over the face.
+            if blanked {
+                if let Some(p) = doze.as_mut() {
+                    p.want(Want::Lit);
+                }
+            }
             if app.take_dirty() {
                 let t0 = Instant::now();
                 app.compose(&mut screen, &fonts, &info, &shown_clock, now);
@@ -1437,6 +1450,21 @@ pub fn run(cfg: &DeviceConfig, font: &Path, mono: &Path, request: bcb::Request, 
                 shown = true;
             }
             blanked = false;
+        } else if dozes {
+            // The face goes on the glass before the panel dozes, and again
+            // each minute: an OLED in its doze shows what the frame holds.
+            if !blanked || faced != shown_clock {
+                skyward_ui::aod::face(&mut screen, &fonts, &shown_clock, cfg.display.density as f32 / 160.0);
+                surface.present(&screen)?;
+                surface.settle()?;
+                faced.clone_from(&shown_clock);
+            }
+            if !blanked && doze.as_mut().is_some_and(|p| p.want(Want::Dark) == Shown::Blank) {
+                screen.data.fill(0);
+                surface.present(&screen)?;
+                surface.settle()?;
+            }
+            blanked = true;
         } else if !blanked {
             // Black out the panel's frame memory before the backlight goes
             // to 0, so an OLED that floors the backlight above zero rather

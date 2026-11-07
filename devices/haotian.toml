@@ -16,7 +16,7 @@ width = 1440
 height = 3200
 density = 600
 diagonal = 6.73
-corner_radius = 168
+corner_radius = 120
 
 [modules]
 sources = ["vendor_boot", "vendor_dlkm", "vendor", "system_dlkm"]
